@@ -64,16 +64,12 @@ void setup() {
 void encoderLeft()
 {
   //Código que aciona o joystick de acordo com o estado
-  //setar variavel que será lida pelo loop
-  //o loop volta a variavel para o estado zero
-  buttonStates[BTN_ENCODER_LEFT] = 1;
+  setEncoderValue(BTN_ENCODER_LEFT);
 }
 void encoderRight()
 {
   //Código que aciona o joystick de acordo com o estado
-  //setar variavel que será lida pelo loop
-  //o loop volta a variavel para o estado zero
-  buttonStates[BTN_ENCODER_RIGHT] = 0;
+  setEncoderValue(BTN_ENCODER_RIGHT);
 }
 void readRotary()
 {
@@ -167,19 +163,14 @@ void pressButtons()
     }
     joystick.setHatSwitch(0, hatValue);
   }
-	setEncoderValue(BTN_ENCODER_LEFT);
-	setEncoderValue(BTN_ENCODER_RIGHT);
 }
 void setEncoderValue(int indice)
 {
-	if( buttonStates[indice] != buttonLastStates[indice] )
-  {
-  	//a posição do botão é o numero dele mais o offset selecionado no rotary
-  	joystick.setButton(indice+(2*rotaryValue), buttonStates[indice]);
-  	buttonLastStates[indice] = buttonStates[indice];
-  	//sempre zera o estado pois a interrupção só o coloca em 1. se já for zero, nada acontece
-  	buttonStates[indice] = 0;
-	}
+	//a posição do botão é o numero dele mais o offset selecionado no rotary
+  joystick.setButton(indice+(2*rotaryValue), 1);
+  delay(10ms);
+  //sempre zera o estado pois a interrupção só o coloca em 1. se já for zero, nada acontece
+  joystick.setButton(indice+(2*rotaryValue), 0);
 }
 
 void loop() {
