@@ -22,10 +22,6 @@
 
 int rotaryValue = 0;
 //Pinos de escrita para o rotary
-int rotaryPinsW[] = {4, 5, 6};
-int rotaryPinsR[] = {7, 8, 9, 10};
-int btnPinsW[] = {14, 15};
-int btnPinsR[] = {18, 19, 20, 21};
 
 Joystick_ joystick(JOYSTICK_DEFAULT_REPORT_ID, JOYSTICK_TYPE_JOYSTICK,
                    29, 1,                 // Button Count, Hat Switch Count
@@ -39,53 +35,79 @@ int buttonStates[N_BOTOES] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 int buttonLastStates[N_BOTOES] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
 void setup() {
-
-  for (int i = 0 ; i < sizeof(rotaryPinsW); i++ )
-  {
-    pinMode(rotaryPinsW[i], OUTPUT);
-  }
-  for (int i = 0 ; i < sizeof(rotaryPinsR); i++ )
-  {
-    pinMode(rotaryPinsR[i], INPUT_PULLUP);
-  }
+  //Serial.begin(9600);
+  //entradas do encoder
+  pinMode(2, INPUT_PULLUP);
+  pinMode(3, INPUT_PULLUP);
+  //portas do Rotary
+  pinMode(4, OUTPUT);
+  pinMode(5, OUTPUT);
+  pinMode(6, OUTPUT);
+  pinMode(7, INPUT_PULLUP);
+  pinMode(8, INPUT_PULLUP);
+  pinMode(9, INPUT_PULLUP);
+  pinMode(10, INPUT_PULLUP);
+  //portas dos botoes
+  pinMode(14, OUTPUT);
+  pinMode(15, OUTPUT);
+  pinMode(18, INPUT_PULLUP);
+  pinMode(19, INPUT_PULLUP);
+  pinMode(20, INPUT_PULLUP);
+  pinMode(21, INPUT_PULLUP);
   
-  for (int i = 0 ; i < sizeof(btnPinsW); i++ )
-  {
-    pinMode(btnPinsW[i], OUTPUT);
-  }
-  for (int i = 0 ; i < sizeof(btnPinsR); i++ )
-  {
-    pinMode(btnPinsR[i], INPUT_PULLUP);
-  }
   attachInterrupt(digitalPinToInterrupt(2), encoderLeft, FALLING );
   attachInterrupt(digitalPinToInterrupt(3), encoderRight, FALLING );
   joystick.begin();
 }
 void encoderLeft()
 {
-  //Código que aciona o joystick de acordo com o estado
+  //CÃ³digo que aciona o joystick de acordo com o estado
   setEncoderValue(BTN_ENCODER_LEFT);
 }
 void encoderRight()
 {
-  //Código que aciona o joystick de acordo com o estado
+  //CÃ³digo que aciona o joystick de acordo com o estado
   setEncoderValue(BTN_ENCODER_RIGHT);
+}
+void setEncoderValue(int indice)
+{
+ //a posiÃ§Ã£o do botÃ£o Ã© o numero dele mais o offset selecionado no rotary
+ if( buttonStates[indice] == 0 )
+  {
+  buttonStates[indice] = 100;
+  }
 }
 void readRotary()
 {
   //4 5 6 7
   // X
   // 8 9 10
-  for ( int i = 0; i < sizeof(rotaryPinsW) ; i++ )
+  int rotaryPinsW[] = {4, 5, 6};
+  int rotaryPinsR[] = {7, 8, 9, 10};
+  int newRotary = 0;
+  for ( int i = 0; i < 3 ; i++ )
   {
     digitalWrite(rotaryPinsW[i], 0);
-    //Escrever 0 na saída Write[i]
-    for ( int j = 0; j < sizeof(rotaryPinsR) ; j++ )
+    //Escrever 0 na saÃ­da Write[i]
+    for ( int j = 0; j < 4 ; j++ )
     {
       //ler a entrada de read
       if ( digitalRead(rotaryPinsR[j]) < 1 )
       {
-        rotaryValue = (i * sizeof(rotaryPinsR)) + j;
+        newRotary = ( i * 4) + j;
+        if(newRotary != rotaryValue)
+        {
+          //Serial.print(i);
+        //Serial.print(" * ");
+        //Serial.print(4);
+        //Serial.print(" + ");
+        //Serial.print(j);
+        //Serial.print(" = ");
+        //Serial.println(newRotary);  
+        rotaryValue = newRotary;
+        }
+        
+        
       }
     }
     digitalWrite(rotaryPinsW[i], 1);
@@ -94,26 +116,30 @@ void readRotary()
 void readButtons()
 {
   int pos = 0;
-  int sizeR =  sizeof(btnPinsR);
-  int sizeW = sizeof(btnPinsW);
+  int btnPinsW[] = {14, 15};
+  int btnPinsR[] = {18, 19, 20, 21};
 
-  for ( int i = 0; i <  sizeW; i++ )
+  for ( int i = 0; i <  2; i++ )
   {
     digitalWrite(btnPinsW[i], 0);
-    //Escrever 0 na saída Write[i]
-    for ( int j = 0; j < sizeR ; j++ )
+    //Escrever 0 na saÃ­da Write[i]
+    for ( int j = 0; j < 4 ; j++ )
     {
-      pos = (i * sizeR) + j;
+      pos = (i * 4) + j;
       //transforma o valor de 1 para 0 e 0 para 1
       buttonStates[pos] = 1 - digitalRead(btnPinsR[j]);
     }
     digitalWrite(btnPinsW[i], 1);
   }
   //seguindo o esquema elétrico do DPAD
-  //se UP e DOWN foram pressionados então siginifica que o botão central foi acionado
+  //se UP e DOWN foram pressionados entÃ£o siginifica que o botÃ£o central foi acionado
   if ( buttonStates[DPAD_UP] > 0 && buttonStates[DPAD_DOWN] > 0 )
   {
     buttonStates[BTN_CENTER] = 1;
+    buttonStates[DPAD_UP] = 0;
+    buttonStates[DPAD_DOWN] = 0;
+    buttonStates[DPAD_RIGHT] = 0;
+    buttonStates[DPAD_LEFT] = 0;
   }
   else
   {
@@ -127,24 +153,24 @@ void pressButtons()
   {
     if ( buttonStates[i] != buttonLastStates[i])
     {
-      //atribui o estado atual ao botão
+      //atribui o estado atual ao botÃ£o
       joystick.setButton(i, buttonStates[i]);
       //salva o estado atual como estado anterior
-      buttonLastStates[i] != buttonStates[i];
+      buttonLastStates[i] = buttonStates[i];
     }
   }
   if ( buttonStates[BTN_CENTER] != buttonLastStates[BTN_CENTER])
   {
-    //atribui o estado atual ao botão
-    joystick.setButton(BTN_CENTER, buttonStates[BTN_CENTER]);
+    //atribui o estado atual ao botÃ£o
+    joystick.setButton(BTN_CENTER - 4, buttonStates[BTN_CENTER]);
     //salva o estado atual como estado anterior
-    buttonLastStates[BTN_CENTER] != buttonStates[BTN_CENTER];
+    buttonLastStates[BTN_CENTER] = buttonStates[BTN_CENTER];
   }
-  //só le o DPAD se o botão central não estiver pressionado,
-  // caso contrário todos seriam 1
+  //sÃ³ le o DPAD se o botÃ£o central nÃ£o estiver pressionado,
+  // caso contrÃ¡rio todos seriam 1
+    int hatValue = -1;
   if (  buttonStates[BTN_CENTER] < 1 )
   {
-    int hatValue = -1;
     if ( buttonStates[DPAD_UP] != buttonLastStates[DPAD_UP] )
     {
       hatValue = 0;
@@ -161,21 +187,54 @@ void pressButtons()
     {
       hatValue = 270;
     }
-    joystick.setHatSwitch(0, hatValue);
   }
-}
-void setEncoderValue(int indice)
-{
-	//a posição do botão é o numero dele mais o offset selecionado no rotary
-  joystick.setButton(indice+(2*rotaryValue), 1);
-  delay(10ms);
-  //sempre zera o estado pois a interrupção só o coloca em 1. se já for zero, nada acontece
-  joystick.setButton(indice+(2*rotaryValue), 0);
+    joystick.setHatSwitch(0, hatValue);
+  
 }
 
+void testaValorEncoder(int indice)
+{
+  int indiceBtn = indice - 4;
+  if( buttonStates[indice] > 0 )
+  {
+    if(buttonLastStates[indice] == 0)
+    {
+       //Serial.print("recebeu entrada de encoder para o indice: ");
+        //Serial.print(indiceBtn);
+        //Serial.print("  Rotari valor: ");
+        //Serial.print(rotaryValue);
+        //Serial.print(" Acionando botÃ£o: ");
+        //Serial.println(indiceBtn+(2*rotaryValue));
+        joystick.setButton(indiceBtn+(2*rotaryValue), 1);
+        buttonLastStates[indice] = buttonStates[indice];
+        buttonStates[indice]--;
+    }
+    else
+    {
+      buttonStates[indice]--;
+      if( buttonStates[indice] == 0 )
+      {
+        buttonLastStates[indice] = buttonStates[indice];
+        joystick.setButton(indiceBtn+(2*rotaryValue), 0);
+        //Serial.print("Liberou ");
+        //Serial.println(indiceBtn);
+      }
+      //else
+      //{
+        //Serial.print("Incide [");
+        //Serial.print(indice);
+        //Serial.print("Diminuiu para [");
+        //Serial.print(buttonStates[indice]);
+        //Serial.println("]");
+      //}
+    }
+  }
+}
 void loop() {
   readRotary ();
   readButtons();
   pressButtons();
+  testaValorEncoder(BTN_ENCODER_LEFT);
+  testaValorEncoder(BTN_ENCODER_RIGHT);
   delay(10);
 }
