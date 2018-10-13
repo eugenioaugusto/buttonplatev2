@@ -1,5 +1,5 @@
 
-/*geniostick version 0.2
+/*geniostick version 0.3
 *
 
 */
@@ -13,14 +13,19 @@
 #define BTN_3 2
 #define BTN_4 3
 #define DPAD_UP 4
-#define DPAD_RIGHT 5
+#define DPAD_LEFT 5
 #define DPAD_DOWN 6
-#define DPAD_LEFT 7
+#define DPAD_RIGHT 7
 #define BTN_CENTER 8
 #define BTN_ENCODER_LEFT 9
 #define BTN_ENCODER_RIGHT 10
 
+#define DEFAULT_DELAY 5
+
 int rotaryValue = 0;
+int timerEncoder = 0;
+int lastA = 0;
+int lastLado = 0;
 //Pinos de escrita para o rotary
 
 Joystick_ joystick(JOYSTICK_DEFAULT_REPORT_ID, JOYSTICK_TYPE_JOYSTICK,
@@ -50,45 +55,28 @@ void setup() {
   //portas dos botoes
   pinMode(14, OUTPUT);
   pinMode(15, OUTPUT);
+  pinMode(16, INPUT_PULLUP);
   pinMode(18, INPUT_PULLUP);
   pinMode(19, INPUT_PULLUP);
   pinMode(20, INPUT_PULLUP);
   pinMode(21, INPUT_PULLUP);
-  
-  attachInterrupt(digitalPinToInterrupt(2), encoderLeft, FALLING );
-  attachInterrupt(digitalPinToInterrupt(3), encoderRight, FALLING );
+ 
   joystick.begin();
 }
-void encoderLeft()
-{
-  //CÃ³digo que aciona o joystick de acordo com o estado
-  setEncoderValue(BTN_ENCODER_LEFT);
-}
-void encoderRight()
-{
-  //CÃ³digo que aciona o joystick de acordo com o estado
-  setEncoderValue(BTN_ENCODER_RIGHT);
-}
-void setEncoderValue(int indice)
-{
- //a posiÃ§Ã£o do botÃ£o Ã© o numero dele mais o offset selecionado no rotary
- if( buttonStates[indice] == 0 )
-  {
-  buttonStates[indice] = 100;
-  }
-}
+
+
 void readRotary()
 {
   //4 5 6 7
   // X
   // 8 9 10
-  int rotaryPinsW[] = {4, 5, 6};
+  int rotaryPinsW[] = {5, 4, 6};
   int rotaryPinsR[] = {7, 8, 9, 10};
   int newRotary = 0;
   for ( int i = 0; i < 3 ; i++ )
   {
     digitalWrite(rotaryPinsW[i], 0);
-    //Escrever 0 na saÃ­da Write[i]
+    //Escrever 0 na saÃƒÂ­da Write[i]
     for ( int j = 0; j < 4 ; j++ )
     {
       //ler a entrada de read
@@ -97,11 +85,12 @@ void readRotary()
         newRotary = ( i * 4) + j;
         if(newRotary != rotaryValue)
         {
+          limpaEncoder();
           //Serial.print(i);
         //Serial.print(" * ");
         //Serial.print(4);
         //Serial.print(" + ");
-        //Serial.print(j);
+       // Serial.print(j);
         //Serial.print(" = ");
         //Serial.println(newRotary);  
         rotaryValue = newRotary;
@@ -122,7 +111,7 @@ void readButtons()
   for ( int i = 0; i <  2; i++ )
   {
     digitalWrite(btnPinsW[i], 0);
-    //Escrever 0 na saÃ­da Write[i]
+    //Escrever 0 na saÃƒÂ­da Write[i]
     for ( int j = 0; j < 4 ; j++ )
     {
       pos = (i * 4) + j;
@@ -131,17 +120,17 @@ void readButtons()
     }
     digitalWrite(btnPinsW[i], 1);
   }
-  //seguindo o esquema elétrico do DPAD
-  //se UP e DOWN foram pressionados entÃ£o siginifica que o botÃ£o central foi acionado
-  if ( buttonStates[DPAD_UP] > 0 && buttonStates[DPAD_DOWN] > 0 )
-  {
-    buttonStates[BTN_CENTER] = 1;
-    buttonStates[DPAD_UP] = 0;
-    buttonStates[DPAD_DOWN] = 0;
-    buttonStates[DPAD_RIGHT] = 0;
-    buttonStates[DPAD_LEFT] = 0;
-  }
-  else
+  digitalWrite(btnPinsW[1], 0);
+  
+  buttonStates[BTN_CENTER] = 1 - digitalRead(16);
+  
+  digitalWrite(btnPinsW[1], 1);
+  //seguindo o esquema elÃ©trico do DPAD
+  //se UP e DOWN foram pressionados entÃƒÂ£o siginifica que o botÃƒÂ£o central foi acionado
+  if ( buttonStates[DPAD_UP] != 0 
+  || buttonStates[DPAD_DOWN] != 0 
+  || buttonStates[DPAD_RIGHT] != 0
+  || buttonStates[DPAD_LEFT] != 0 )
   {
     buttonStates[BTN_CENTER] = 0;
   }
@@ -153,7 +142,7 @@ void pressButtons()
   {
     if ( buttonStates[i] != buttonLastStates[i])
     {
-      //atribui o estado atual ao botÃ£o
+      //atribui o estado atual ao botÃƒÂ£o
       joystick.setButton(i, buttonStates[i]);
       //salva o estado atual como estado anterior
       buttonLastStates[i] = buttonStates[i];
@@ -161,13 +150,13 @@ void pressButtons()
   }
   if ( buttonStates[BTN_CENTER] != buttonLastStates[BTN_CENTER])
   {
-    //atribui o estado atual ao botÃ£o
+    //atribui o estado atual ao botÃƒÂ£o
     joystick.setButton(BTN_CENTER - 4, buttonStates[BTN_CENTER]);
     //salva o estado atual como estado anterior
     buttonLastStates[BTN_CENTER] = buttonStates[BTN_CENTER];
   }
-  //sÃ³ le o DPAD se o botÃ£o central nÃ£o estiver pressionado,
-  // caso contrÃ¡rio todos seriam 1
+  //sÃƒÂ³ le o DPAD se o botÃƒÂ£o central nÃƒÂ£o estiver pressionado,
+  // caso contrÃƒÂ¡rio todos seriam 1
     int hatValue = -1;
   if (  buttonStates[BTN_CENTER] < 1 )
   {
@@ -203,7 +192,7 @@ void testaValorEncoder(int indice)
         //Serial.print(indiceBtn);
         //Serial.print("  Rotari valor: ");
         //Serial.print(rotaryValue);
-        //Serial.print(" Acionando botÃ£o: ");
+        //Serial.print(" Acionando botÃƒÂ£o: ");
         //Serial.println(indiceBtn+(2*rotaryValue));
         joystick.setButton(indiceBtn+(2*rotaryValue), 1);
         buttonLastStates[indice] = buttonStates[indice];
@@ -230,11 +219,55 @@ void testaValorEncoder(int indice)
     }
   }
 }
+void limpaEncoder()
+{
+  for(int i=0; i <12; i++)
+  {
+    joystick.setButton(BTN_ENCODER_LEFT - 4 +(2*rotaryValue), 0);
+    joystick.setButton(BTN_ENCODER_RIGHT - 4 +(2*rotaryValue), 0);
+    
+  }
+}
 void loop() {
+
   readRotary ();
   readButtons();
   pressButtons();
   testaValorEncoder(BTN_ENCODER_LEFT);
   testaValorEncoder(BTN_ENCODER_RIGHT);
-  delay(10);
+  if(timerEncoder == 0 )
+  {
+    for(int i=0;i<10;i++)
+    {
+      int a = 1-digitalRead(2);
+      int b = 1-digitalRead(3);
+      int lado;
+      if( a>0 && a != lastA )
+      {
+        lado = b-a;
+        if( lado == lastLado )
+        {
+          if( lado == 0 )
+          {
+            //Serial.println("Direita");
+            buttonStates[BTN_ENCODER_RIGHT] = 10;
+          }
+          else
+          {
+            //Serial.println("Esquerda");
+            buttonStates[BTN_ENCODER_LEFT] = 10;
+          }
+        }
+        lastLado = lado;
+        i=100;
+        timerEncoder = 30;
+      }
+      lastA = a;
+    }
+  }
+  else
+  {
+    timerEncoder--;
+  }
+  delay(DEFAULT_DELAY);
 }
