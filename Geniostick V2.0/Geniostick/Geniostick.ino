@@ -1,5 +1,5 @@
 
-/*geniostick version 0.3
+/*geniostick version 0.2
 *
 
 */
@@ -21,6 +21,7 @@
 #define BTN_ENCODER_RIGHT 10
 
 #define DEFAULT_DELAY 5
+#define DEFAULT_HOLD_BUTTON 10
 
 int rotaryValue = 0;
 int timerEncoder = 0;
@@ -86,13 +87,13 @@ void readRotary()
         if(newRotary != rotaryValue)
         {
           limpaEncoder();
-          //Serial.print(i);
-        //Serial.print(" * ");
-        //Serial.print(4);
-        //Serial.print(" + ");
-       // Serial.print(j);
-        //Serial.print(" = ");
-        //Serial.println(newRotary);  
+          /*Serial.print(i);
+        Serial.print(" * ");
+        Serial.print(4);
+        Serial.print(" + ");
+        Serial.print(j);
+        Serial.print(" = ");
+        Serial.println(newRotary);  */
         rotaryValue = newRotary;
         }
         
@@ -107,7 +108,7 @@ void readButtons()
   int pos = 0;
   int btnPinsW[] = {14, 15};
   int btnPinsR[] = {18, 19, 20, 21};
-
+  int readValue = 0;
   for ( int i = 0; i <  2; i++ )
   {
     digitalWrite(btnPinsW[i], 0);
@@ -116,7 +117,21 @@ void readButtons()
     {
       pos = (i * 4) + j;
       //transforma o valor de 1 para 0 e 0 para 1
-      buttonStates[pos] = 1 - digitalRead(btnPinsR[j]);
+      readValue = 1-digitalRead(btnPinsR[j]);
+      if( readValue > 0 )
+      {
+        buttonStates[pos] = DEFAULT_HOLD_BUTTON;
+      }
+      else if( buttonStates[pos] > 0 )
+      {
+        buttonStates[pos]--;
+        //para evitar que envie comando repetidamente
+        if( buttonStates[pos] > 0 )
+        {
+          buttonLastStates[pos]--;
+        }
+      }
+      //buttonStates[pos] = 1 - digitalRead(btnPinsR[j]);
     }
     digitalWrite(btnPinsW[i], 1);
   }
@@ -160,19 +175,19 @@ void pressButtons()
     int hatValue = -1;
   if (  buttonStates[BTN_CENTER] < 1 )
   {
-    if ( buttonStates[DPAD_UP] != buttonLastStates[DPAD_UP] )
+    if ( buttonStates[DPAD_UP] > 0 && buttonStates[DPAD_UP] != buttonLastStates[DPAD_UP] )
     {
       hatValue = 0;
     }
-    else if ( buttonStates[DPAD_RIGHT] != buttonLastStates[DPAD_RIGHT] )
+    else if ( buttonStates[DPAD_RIGHT] > 0 && buttonStates[DPAD_RIGHT] != buttonLastStates[DPAD_RIGHT] )
     {
       hatValue = 90;
     }
-    else if ( buttonStates[DPAD_DOWN] != buttonLastStates[DPAD_DOWN] )
+    else if ( buttonStates[DPAD_DOWN] > 0 && buttonStates[DPAD_DOWN] != buttonLastStates[DPAD_DOWN] )
     {
       hatValue = 180;
     }
-    else if ( buttonStates[DPAD_LEFT] != buttonLastStates[DPAD_LEFT] )
+    else if ( buttonStates[DPAD_LEFT] > 0 && buttonStates[DPAD_LEFT] != buttonLastStates[DPAD_LEFT] )
     {
       hatValue = 270;
     }
@@ -249,12 +264,12 @@ void loop() {
         {
           if( lado == 0 )
           {
-            //Serial.println("Direita");
+            Serial.println("Direita");
             buttonStates[BTN_ENCODER_RIGHT] = 10;
           }
           else
           {
-            //Serial.println("Esquerda");
+            Serial.println("Esquerda");
             buttonStates[BTN_ENCODER_LEFT] = 10;
           }
         }
